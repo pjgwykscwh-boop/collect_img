@@ -27,8 +27,6 @@ from selenium.common.exceptions import NoSuchElementException, TimeoutException
 # ══════════════════════════════════════════
 ACCOUNT   = os.environ["LIB_ACCOUNT"]
 PASSWORD  = os.environ["LIB_PASSWORD"]
-QQ_ADDR   = os.environ["QQ_ADDR"]       # 你的QQ邮箱，如 123456@qq.com
-QQ_SMTP_PASS = os.environ["QQ_SMTP_PASS"]  # QQ邮箱授权码（不是登录密码）
 
 TARGET    = 3000
 BATCH     = 500       # 每500张发一次
@@ -56,7 +54,7 @@ def make_driver():
     return webdriver.Chrome(service=service, options=options)
 
 
-def send_email_with_zip(zip_path, batch_num, total_collected):
+'''def send_email_with_zip(zip_path, batch_num, total_collected):
     """把zip文件作为附件发送到QQ邮箱"""
     print(f"正在发送第{batch_num}批邮件...")
     msg = MIMEMultipart()
@@ -81,7 +79,7 @@ def send_email_with_zip(zip_path, batch_num, total_collected):
             server.sendmail(QQ_ADDR, QQ_ADDR, msg.as_string())
         print(f"第{batch_num}批邮件发送成功")
     except Exception as e:
-        print(f"邮件发送失败: {e}")
+        print(f"邮件发送失败: {e}")'''
 
 
 def pack_and_send(batch_files, batch_num, total_collected):

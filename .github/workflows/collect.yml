@@ -1,15 +1,12 @@
 name: 采集验证码裁剪图
 
 on:
-  schedule:
-    # 北京时间 6:00 = UTC 时间 22:00（前一天）
-    - cron: '50 21 * * *'
-  workflow_dispatch:   # 手动触发
+  workflow_dispatch:
 
 jobs:
   collect:
     runs-on: ubuntu-latest
-    timeout-minutes: 300   # 最长5小时
+    timeout-minutes: 300
 
     steps:
       - name: 检出代码
@@ -24,14 +21,15 @@ jobs:
 
       - name: 运行采集脚本
         env:
-          LIB_ACCOUNT:   ${{ secrets.LIB_ACCOUNT }}
-          LIB_PASSWORD:  ${{ secrets.LIB_PASSWORD }}
+          LIB_ACCOUNT: ${{ secrets.LIB_ACCOUNT }}
+          LIB_PASSWORD: ${{ secrets.LIB_PASSWORD }}
         run: |
           python collect_crops.py
+
       - name: 上传裁剪图
-        if: always()   # 即使脚本中途失败也上传已采集的
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: crops-${{ github.run_number }}
           path: artifacts/
-          retention-days: 7   # 保留7天，够你下载
+          retention-days: 7

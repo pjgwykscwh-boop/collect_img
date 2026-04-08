@@ -167,6 +167,7 @@ def open_captcha(driver):
         if len(rolls) >= 2:
             for label in rolls[1].find_elements(By.TAG_NAME, "label"):
                 if label.text.strip() == "21:00":
+                    wait_until_630()
                     label.click()
                     break
         time.sleep(0.5)
@@ -251,7 +252,7 @@ def main():
     collected    = 0
     batch_num    = 0
     batch_buffer = []
-    wait_until_630()
+    
     try:
         login(driver)
         open_captcha(driver)

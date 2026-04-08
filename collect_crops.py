@@ -18,6 +18,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
+import tempfile
 
 # ══════════════════════════════════════════
 ACCOUNT      = os.environ["LIB_ACCOUNT"]
@@ -36,7 +37,28 @@ os.makedirs(ARTIFACT_DIR, exist_ok=True)
 ocr_cls = ddddocr.DdddOcr(det=False, use_gpu=False, show_ad=False)
 det     = ddddocr.DdddOcr(det=True,  use_gpu=False, show_ad=False)
 
+import tempfile
 
+import time
+from datetime import datetime, timedelta, timezone
+
+
+# 获取北京时间（东八区时间）
+def get_beijing_time():
+    return datetime.utcnow().replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=8)))
+
+
+def wait_until_630():
+    while True:
+        now = get_beijing_time()
+        target = now.replace(hour=6, minute=30, second=5, microsecond=0)
+        if now >= target:
+            break
+        remaining = (target - now).total_seconds()
+        if remaining > 1:
+            time.sleep(0.5)
+        else:
+            time.sleep(0.05)  # 最后1秒内高频检查
 def make_driver():
     options = ChromeOptions()
     options.add_argument('--disable-blink-features=AutomationControlled')
@@ -229,7 +251,7 @@ def main():
     collected    = 0
     batch_num    = 0
     batch_buffer = []
-
+    wait_until_630()
     try:
         login(driver)
         open_captcha(driver)

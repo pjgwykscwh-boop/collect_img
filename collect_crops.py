@@ -129,7 +129,7 @@ def open_captcha(driver):
 
     try:
         seat = WebDriverWait(driver, 8).until(
-            EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "seat-name") and text()="91"]'))
+            EC.presence_of_element_located((By.XPATH, '//div[contains(@class, "seat-name") and text()="98"]'))
         )
         seat.click()
         time.sleep(0.5)
@@ -138,13 +138,13 @@ def open_captcha(driver):
 
     try:
         WebDriverWait(driver, 8).until(
-            EC.element_to_be_clickable((By.XPATH, '(//div[@class="times-roll"])[1]//label[normalize-space(text())="09:00"]'))
+            EC.element_to_be_clickable((By.XPATH, '(//div[@class="times-roll"])[1]//label[normalize-space(text())="20:00"]'))
         ).click()
         time.sleep(1.5)
         rolls = driver.find_elements(By.CLASS_NAME, "times-roll")
         if len(rolls) >= 2:
             for label in rolls[1].find_elements(By.TAG_NAME, "label"):
-                if label.text.strip() == "15:00":
+                if label.text.strip() == "21:00":
                     label.click()
                     break
         time.sleep(0.5)

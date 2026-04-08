@@ -42,7 +42,16 @@ import tempfile
 import time
 from datetime import datetime, timedelta, timezone
 
-
+# 等待直到早上 6:25（北京时间）
+def wait_until_625():
+    while True:
+        now = get_beijing_time()
+        if now.hour > 6 or (now.hour == 6 and now.minute >= 25):
+            # print(f"当前北京时间 {now.strftime('%H:%M:%S')}，已过 6:29，开始执行任务。")
+            break
+        else:
+            # print(f"当前北京时间 {now.strftime('%H:%M:%S')}，未到 6:29，继续等待...")
+            time.sleep(1)  # 每 1 秒检查一次
 # 获取北京时间（东八区时间）
 def get_beijing_time():
     return datetime.utcnow().replace(tzinfo=timezone.utc).astimezone(timezone(timedelta(hours=8)))
@@ -248,6 +257,7 @@ def collect_one_round(driver, collected, batch_buffer):
 
 
 def main():
+    wait_until_625()
     driver       = make_driver()
     collected    = 0
     batch_num    = 0

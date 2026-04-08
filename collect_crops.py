@@ -85,21 +85,16 @@ def send_email_with_zip(zip_path, batch_num, total_collected):
 
 
 def pack_and_send(batch_files, batch_num, total_collected):
-    """打包指定文件列表并发送"""
-    zip_path = f"batch_{batch_num:03d}.zip"
+    """打包指定文件列表，保存到artifact目录"""
+    artifact_dir = "artifacts"
+    os.makedirs(artifact_dir, exist_ok=True)
+    
+    zip_path = f"{artifact_dir}/batch_{batch_num:03d}_total{total_collected}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for fpath in batch_files:
             zf.write(fpath, os.path.basename(fpath))
     size_mb = os.path.getsize(zip_path) / 1024 / 1024
-    print(f"已打包 {len(batch_files)} 张，压缩包大小: {size_mb:.1f}MB")
-
-    # QQ邮箱附件上限50MB，超了就提示但不发
-    if size_mb > 48:
-        print(f"警告：压缩包超过48MB，跳过发送，文件保留在runner上")
-    else:
-        send_email_with_zip(zip_path, batch_num, total_collected)
-
-    os.remove(zip_path)
+    print(f"已打包第{batch_num}批 {len(batch_files)} 张，{size_mb:.1f}MB → {zip_path}")
 
 
 def login(driver):

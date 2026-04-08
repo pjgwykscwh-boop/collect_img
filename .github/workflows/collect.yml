@@ -26,7 +26,12 @@ jobs:
         env:
           LIB_ACCOUNT:   ${{ secrets.LIB_ACCOUNT }}
           LIB_PASSWORD:  ${{ secrets.LIB_PASSWORD }}
-          QQ_ADDR:       ${{ secrets.QQ_ADDR }}
-          QQ_SMTP_PASS:  ${{ secrets.QQ_SMTP_PASS }}
         run: |
           python collect_crops.py
+      - name: 上传裁剪图
+        if: always()   # 即使脚本中途失败也上传已采集的
+        uses: actions/upload-artifact@v4
+        with:
+          name: crops-${{ github.run_number }}
+          path: artifacts/
+          retention-days: 7   # 保留7天，够你下载

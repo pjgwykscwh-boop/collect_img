@@ -1,17 +1,12 @@
 """
 批量采集点选验证码裁剪图 - GitHub Actions版
-每采集500张打包发送到QQ邮箱
+每采集500张打包存入artifacts目录，Actions结束后统一下载
 """
 
 import base64
 import os
 import time
-import smtplib
 import zipfile
-from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
-from email.mime.text import MIMEText
-from email import encoders
 from io import BytesIO
 
 import ddddocr
@@ -25,17 +20,18 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
 # ══════════════════════════════════════════
-ACCOUNT   = os.environ["LIB_ACCOUNT"]
-PASSWORD  = os.environ["LIB_PASSWORD"]
-
-TARGET    = 3000
-BATCH     = 500       # 每500张发一次
-SAVE_DIR  = "crops"
-BG_DIR    = "crops/bg"
+ACCOUNT      = os.environ["LIB_ACCOUNT"]
+PASSWORD     = os.environ["LIB_PASSWORD"]
+TARGET       = 3000
+BATCH        = 500
+SAVE_DIR     = "crops"
+BG_DIR       = "crops/bg"
+ARTIFACT_DIR = "artifacts"
 # ══════════════════════════════════════════
 
-os.makedirs(SAVE_DIR, exist_ok=True)
-os.makedirs(BG_DIR,   exist_ok=True)
+os.makedirs(SAVE_DIR,     exist_ok=True)
+os.makedirs(BG_DIR,       exist_ok=True)
+os.makedirs(ARTIFACT_DIR, exist_ok=True)
 
 ocr_cls = ddddocr.DdddOcr(det=False, use_gpu=False, show_ad=False)
 det     = ddddocr.DdddOcr(det=True,  use_gpu=False, show_ad=False)
@@ -49,50 +45,17 @@ def make_driver():
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
-    # GitHub Actions里chromedriver在PATH中，直接用Service
-    service = Service()
-    return webdriver.Chrome(service=service, options=options)
+    return webdriver.Chrome(service=Service(), options=options)
 
 
-'''def send_email_with_zip(zip_path, batch_num, total_collected):
-    """把zip文件作为附件发送到QQ邮箱"""
-    print(f"正在发送第{batch_num}批邮件...")
-    msg = MIMEMultipart()
-    msg["From"]    = QQ_ADDR
-    msg["To"]      = QQ_ADDR
-    msg["Subject"] = f"验证码裁剪图 第{batch_num}批 共{total_collected}张"
-
-    body = f"第{batch_num}批，本批500张，累计{total_collected}张，见附件。"
-    msg.attach(MIMEText(body, "plain", "utf-8"))
-
-    with open(zip_path, "rb") as f:
-        part = MIMEBase("application", "octet-stream")
-        part.set_payload(f.read())
-    encoders.encode_base64(part)
-    part.add_header("Content-Disposition",
-                    f"attachment; filename={os.path.basename(zip_path)}")
-    msg.attach(part)
-
-    try:
-        with smtplib.SMTP_SSL("smtp.qq.com", 465) as server:
-            server.login(QQ_ADDR, QQ_SMTP_PASS)
-            server.sendmail(QQ_ADDR, QQ_ADDR, msg.as_string())
-        print(f"第{batch_num}批邮件发送成功")
-    except Exception as e:
-        print(f"邮件发送失败: {e}")'''
-
-
-def pack_and_send(batch_files, batch_num, total_collected):
-    """打包指定文件列表，保存到artifact目录"""
-    artifact_dir = "artifacts"
-    os.makedirs(artifact_dir, exist_ok=True)
-    
-    zip_path = f"{artifact_dir}/batch_{batch_num:03d}_total{total_collected}.zip"
+def pack(batch_files, batch_num, total_collected):
+    zip_path = f"{ARTIFACT_DIR}/batch_{batch_num:03d}_total{total_collected}.zip"
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for fpath in batch_files:
-            zf.write(fpath, os.path.basename(fpath))
+            if os.path.exists(fpath):
+                zf.write(fpath, os.path.basename(fpath))
     size_mb = os.path.getsize(zip_path) / 1024 / 1024
-    print(f"已打包第{batch_num}批 {len(batch_files)} 张，{size_mb:.1f}MB → {zip_path}")
+    print(f"已打包第{batch_num}批 {len(batch_files)}张 → {zip_path}（{size_mb:.1f}MB）")
 
 
 def login(driver):
@@ -223,21 +186,22 @@ def collect_one_round(driver, collected, batch_buffer):
         time.sleep(1)
         return collected, batch_buffer
 
-    ts = time.strftime("%Y%m%d_%H%M%S")
+    ts       = time.strftime("%Y%m%d_%H%M%S")
     hint_str = "".join(hint_chars) if hint_chars else "unknown"
     bg_image.save(f"{BG_DIR}/{ts}_hint{hint_str}.png")
 
     auto_count = 0
     for n, bbox in enumerate(bboxes):
         x1, y1, x2, y2 = bbox
-        pad = 5
+        pad  = 5
         crop = bg_image.crop((
             max(0, x1 - pad), max(0, y1 - pad),
-            min(bg_image.width, x2 + pad), min(bg_image.height, y2 + pad)
+            min(bg_image.width,  x2 + pad),
+            min(bg_image.height, y2 + pad)
         ))
 
         recognized = ocr_cls.classification(crop)
-        han_chars = [c for c in recognized if '\u4e00' <= c <= '\u9fff']
+        han_chars  = [c for c in recognized if '\u4e00' <= c <= '\u9fff']
         if han_chars:
             label = han_chars[0]
             auto_count += 1
@@ -261,10 +225,10 @@ def collect_one_round(driver, collected, batch_buffer):
 
 
 def main():
-    driver = make_driver()
-    collected  = 0
-    batch_num  = 0
-    batch_buffer = []   # 记录当前批次的文件路径
+    driver       = make_driver()
+    collected    = 0
+    batch_num    = 0
+    batch_buffer = []
 
     try:
         login(driver)
@@ -274,11 +238,10 @@ def main():
         while collected < TARGET:
             collected, batch_buffer = collect_one_round(driver, collected, batch_buffer)
 
-            # 每500张发一次邮件
             if len(batch_buffer) >= BATCH:
                 batch_num += 1
-                pack_and_send(batch_buffer[:BATCH], batch_num, collected)
-                batch_buffer = batch_buffer[BATCH:]  # 超出部分留到下一批
+                pack(batch_buffer[:BATCH], batch_num, collected)
+                batch_buffer = batch_buffer[BATCH:]
 
             if collected > 0 and collected % 100 == 0:
                 print("刷新页面防止超时...")
@@ -286,10 +249,9 @@ def main():
                 time.sleep(2)
                 open_captcha(driver)
 
-        # 发送剩余不足500张的部分
         if batch_buffer:
             batch_num += 1
-            pack_and_send(batch_buffer, batch_num, collected)
+            pack(batch_buffer, batch_num, collected)
 
         print(f"\n✓ 采集完成！共 {collected} 张")
 
@@ -297,7 +259,7 @@ def main():
         print(f"\n手动停止，已采集 {collected} 张")
         if batch_buffer:
             batch_num += 1
-            pack_and_send(batch_buffer, batch_num, collected)
+            pack(batch_buffer, batch_num, collected)
     finally:
         driver.quit()
 

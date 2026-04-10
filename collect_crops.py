@@ -240,7 +240,8 @@ def collect_one_round(driver, collected, batch_buffer):
         else:
             label = "TODO"
 
-        save_path = f"{SAVE_DIR}/{ts}_{n}_{label}.png"
+        hint_str = "".join(hint_chars) if hint_chars else "unknown"
+        save_path = f"{SAVE_DIR}/{ts}_{n}_label{label}_hint{hint_str}.png"
         crop.save(save_path)
         batch_buffer.append(save_path)
         collected += 1
